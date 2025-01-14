@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+model Admin {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  name             String?
+  email            String
+  password         String
+  role             Role @default(ADMIN)
+  contactInfo      String?
+}
+model Patient {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  age              Int
+  gender           String
+  contactInfo      String
+  emergencyContact String
+  roomNumber       String
+  bedNumber        String
+  floorNumber      String
+  diseases         String[]
+  allergies        String[]
+  address          String
+  meals            Meal[]
+}
+
+model Meal {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  patientId           String   @db.ObjectId
+  mealTime            MealTime
+  Ingredients         String[]
+  Instructions        String?
+  Patient             Patient  @relation(fields: [patientId], references: [id])
+  task                Task?
+  delivery            Delivery?
+  status              MealStatus @default(PENDING)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+}
+
+model PantryStaff {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  contactInfo   String
+  email         String
+  role          Role @default(INFANTRY)
+  password      String
+  location      String
+  shift         Shift
+  tasks         Task[]
+}
+
+model Task {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  staffId       String      @db.ObjectId
+  staff         PantryStaff @relation(fields: [staffId], references: [id])
+  mealId        String      @unique @db.ObjectId
+  meal          Meal        @relation(fields: [mealId], references: [id])
+  status        TaskStatus  @default(IN_PROGRESS)
+  startTime     DateTime    @default(now())
+  completedTime DateTime?
+  notes         String?
+}
+
+model DeliveryPerson {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  contactInfo     String
+  email           String
+  role             Role @default(DELIVERY)
+  password        String
+  currentLocation String?   // For tracking purposes
+  activeDeliveries Delivery[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Delivery {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  mealId          String   @db.ObjectId @unique
+  meal            Meal     @relation(fields: [mealId], references: [id]) 
+  deliveryPersonId String  @db.ObjectId
+  deliveryPerson  DeliveryPerson     @relation(fields: [deliveryPersonId], references: [id])
+  status          DeliveryStatus @default(PENDING)
+  startTime       DateTime?
+  endTime         DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Alert {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  type      AlertType
+  message   String
+  status    AlertStatus @default(UNREAD)
+  createdAt DateTime    @default(now())
+}
+
+enum Shift {
+  MORNING
+  AFTERNOON
+  NIGHT
+}
+
+enum MealTime {
+  BREAKFAST
+  LUNCH
+  DINNER
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  FAILED
+}
+enum DeliveryStatus {
+  PENDING
+  DELIVERED
+  ONWAY
+  FAILED
+}
+
+enum MealStatus {
+  PENDING
+  PREPARING
+  READY
+  DELIVERING
+  DELIVERED
+  FAILED
+}
+
+enum AlertType {
+  DELAYED_PREPARATION
+  DELAYED_DELIVERY
+  DIET_CHANGE
+  STAFF_UNAVAILABLE
+  OTHER
+}
+
+enum AlertStatus {
+  UNREAD
+  READ
+  ACKNOWLEDGED
+}
+enum Role {
+  DELIVERY
+  INFANTRY
+  ADMIN
+}
