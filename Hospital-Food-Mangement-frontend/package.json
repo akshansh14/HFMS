@@ -20,9 +20,10 @@
     "@vitejs/plugin-react": "^4.3.4",
     "axios": "^1.7.7",
     "cloudinary": "^2.5.1",
+    "jwt-decode": "^4.0.0",
     "lucide-react": "^0.469.0",
     "react-hot-toast": "^2.4.1",
-    "react-router-dom": "^6.27.0",
+    "react-router-dom": "^6.28.1",
     "react-toast": "^1.0.3",
     "react-toastify": "^10.0.6",
     "socket.io-client": "^4.8.1"
