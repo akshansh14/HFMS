@@ -12,7 +12,7 @@ exports.createMeal = async (req, res) => {
 			},
 		});
 
-		return res.status(201).json(meal);
+		return res.status(200).json(meal);
 	} catch (error) {
 		console.error(error);
 		return res.status(500).json({ message: "Server error" });

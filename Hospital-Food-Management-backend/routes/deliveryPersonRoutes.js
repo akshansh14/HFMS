@@ -1,10 +1,13 @@
 const express=require('express')
 const router = express.Router()
-const {createPerson,getStaffTasks,updateStaffAvailability,getPatientDetails,getDeliveryPersonwithDeliveries}=require('../controllers/deliverypersoncontroller')
+const {updateDeliveryStatus,getDeliveryPersonwithDeliveries}=require('../controllers/deliverypersoncontroller')
 
-router.post('/deliveryperson', createPerson);
+
+//get delivery person with id and its delivery 
 router.get('/deliveryperson/:deliveryPersonId', getDeliveryPersonwithDeliveries);
-router.get('/deliveryperson/patients/:mealId', getPatientDetails);
+
+//update delivery status 
+router.get('/deliveryperson/:deliveryPId', updateDeliveryStatus);
 
 
 

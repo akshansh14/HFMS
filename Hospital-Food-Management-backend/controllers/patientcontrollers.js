@@ -41,6 +41,8 @@ exports.createPatient = async (req, res) => {
     }
 };
 
+
+//get patients
 exports.getPatients=async(req,res)=>{
     try {
         const patients = await prisma.patient.findMany();

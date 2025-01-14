@@ -1,7 +1,7 @@
 const prisma=require('../prisma/server')
 
 exports.createDelivery = async (req, res) => {
-    const deliveryData = req.body;
+    const deliveryData = req.body; // mealId notes? startTime?
     const { deliveryPersonId } = req.params; // Ensure this is passed in the route parameters
   
     try {
@@ -22,13 +22,21 @@ exports.createDelivery = async (req, res) => {
           startTime: new Date(), // Set start time to the current date/time
         },
       });
-  
+      const meail = await prisma.meal.update({
+        where: {
+          id: deliveryData.mealId,
+        },
+        data: {
+          status: 'DELIVERING',
+        },
+      });
+     
       // Fetch the updated delivery person data including tasks (optional)
       const updatedDeliveryPerson = await prisma.deliveryPerson.findUnique({
         where: { id: deliveryPersonId },
         include: { activeDeliveries: true }, // Include related tasks, if applicable
       });
-  
+      
       return res.status(201).json({
         message: "Delivery created successfully",
         delivery,
@@ -75,16 +83,13 @@ exports.updateDeliveryStatus=async (req, res) =>{
    return res.json(task);
  }
 
- exports.getDeliveriesbyId= async(req,res)=>{
+ exports.getAllDeliveries= async(req,res)=>{
   try {
-    const { id } = req.params;
-    const deliveries= await prisma.delivery.findMany(
-      {
-        where: {
-          deliveryPersonId:id,
-        }
+    const deliveries= await prisma.delivery.findMany({
+      include: {
+        meal: true,
       }
-    );
+    });
     if(!deliveries){
       return res.status(404).json({ message: "No deliveries found" });
     }

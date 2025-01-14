@@ -1,10 +1,17 @@
 const prisma=require('../prisma/server')
 
-    // Create new staff member
     exports.createPerson=async(req, res) =>{
       try {
         const personData = req.body; // name, contactInfo, location, shift, isAvailable
       
+        const oldstaff =await prisma.deliveryPerson.findFirst({
+          where: {
+            email: personData.email,
+          },
+        })
+        if(oldstaff) return res.status(400).json({ message: "Staff member already exists"})
+          
+
       const staff = await prisma.deliveryPerson.create({
         data: personData
       });
@@ -15,57 +22,7 @@ const prisma=require('../prisma/server')
         return res.status(500).json({ message: "Failed to create deliveryPerson member" });
       }
     }
-  
-    // Get staff with their current tasks
-    exports.getStaffTasks=async(req, res)=> {
-    try {
-        const { id } = req.params;
-      
-        const staff = await prisma.pantryStaff.findUnique({
-          where: { id },
-          include: {
-            tasks: {
-              include: {
-                meal: {
-                  include: {
-                    patient: true
-                  }
-                }
-              }
-            }
-          }
-        });
-        
-        return res.status(200).json(staff);
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Failed to get staff tasks" });
-    }
-    }
-  
-    // Update staff availability
-    exports.updateStaffAvailability=async(req, res)=> {
-     try {
-        const { id } = req.params;
-        const { isAvailable } = req.body;
-    
-        //To convert string to boolean If passed a string 
-    if (typeof isAvailable === 'string') {
-        isAvailable = isAvailable.toLowerCase() === 'true'; 
-      }
-        
-        const staff = await prisma.pantryStaff.update({
-          where: { id },
-          data: { isAvailable }
-        });
-        
-        return res.status(200).json(staff);
-     } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Failed to update staff availability" });
-     }
-    }
-  
+ 
     exports.getDeliveryPersonwithDeliveries = async (req, res) => {
         try {
           const { deliveryPersonId } = req.params;
@@ -73,7 +30,15 @@ const prisma=require('../prisma/server')
           const deliveryPerson = await prisma.deliveryPerson.findUnique({
             where: { id: deliveryPersonId },
             include: {
-              activeDeliveries: true,
+              activeDeliveries: {
+                include: {
+                  meal: {
+                    include: {
+                      patient: true,
+                    },
+                  },
+                },
+              },
             },
           });
       
@@ -88,23 +53,65 @@ const prisma=require('../prisma/server')
           res.status(500).json({ message: 'Internal server error', error: error.message });
         }
       };
-      
-      exports.getPatientDetails=async(req,res)=>{
+
+      exports.getAllDeliveryPerson=async(req,res)=>{
         try {
-          const { mealId } = req.params;
-          const meal = await prisma.meal.findUnique({where: { id: mealId },});
-          const mealtime=meal.mealTime
-          const patient = await prisma.patient.findUnique({
-            where: { id: meal.patientId },
-          })
-          if (!meal || !patient) {
-            return res.status(404).json({ message: 'Meal or patient not found' });
-            }
-            
-            res.status(200).json(patient )
+          const deliveryPersons = await prisma.deliveryPerson.findMany();
+          if(!deliveryPersons){
+            return res.status(404).json({message:'No delivery persons found'});
+          }
+          const deliveryPerson = deliveryPersons.map((staff) => {
+            return { ...deliveryPerson, password: undefined, role: undefined };
+          });
+          res.status(200).json(deliveryPersons);
         } catch (error) {
-          console.error('Error fetching patient details:', error);
+          console.error('Error fetching delivery persons:', error);
           res.status(500).json({ message: 'Internal server error', error: error.message });
-          
+        }
+      }
+
+      exports.updateDeliveryStatus=async(req,res)=>{
+        try {
+          const {deliveryId}= req.params;
+          const {status,mealId}=req.body;
+          const updatedDelivery ={}
+          if(status==="DELIVERED"){
+             updatedDelivery=await prisma.delivery.update({
+              where:{
+                id:deliveryId,
+              },
+              data:{
+                status,
+                endTime:new Date.now(),
+              }
+            })
+          }else{
+             updatedDelivery=await prisma.delivery.update({
+              where:{
+                id:deliveryId,
+              },
+              data:{
+                status,
+              }
+            })
+          }
+          if(!updatedDelivery){
+            return res.status(404).json({message:'Delivery not found'});
+            }
+          const meal =await prisma.meal.update({
+              where:{
+                id:mealId,
+              },
+              data:{
+                status,
+              }
+          })
+          if(!meal){
+            return res.status(404).json({message:'Meal not found'});
+          }
+            res.status(200).json(updatedDelivery);
+        } catch (error) {
+          console.error('Error updating delivery status:', error);
+          res.status(500).json({ message: 'Internal server error', error: error.message });
         }
       }

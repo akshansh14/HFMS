@@ -16,9 +16,9 @@
             status: 'PREPARING'
           }
       })
-      const pantryStaff = await prisma.pantryStaff.findUnique({
+      const updatedstaff = await prisma.pantryStaff.findUnique({
         where: { id: staffId },
-        include: { tasks: true }, // Include the tasks relation
+        include: { tasks: true }, // Include related tasks, if applicable
       });
       return res.status(201).json(task);
     } catch (error) {
@@ -27,7 +27,18 @@
     }
   };
 
-
+exports.getAllTask=async(req,res)=>{
+  try {
+    const tasks = await prisma.task.findMany()
+    if(!tasks){
+      return res.status(404).json({ message: "No tasks found" });
+    }
+    return res.status(200).json(tasks);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
 
  // Update task status
 

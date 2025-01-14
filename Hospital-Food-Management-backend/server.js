@@ -4,11 +4,8 @@ require("dotenv").config();
 const cors = require("cors");
 const app = express();
 const loginRoutes = require("./routes/loginRoutes");
-const patientRoutes = require("./routes/patientRoutes");
 const pantryRoutes = require("./routes/pantryRoutes");
-const mealRoutes = require("./routes/mealRoutes");
-const taskRoutes = require("./routes/taskRoutes");
-const deliveryRoutes = require("./routes/deliveryRoutes");
+const managerRoutes = require("./routes/managerRoutes");
 const deliveryPersonRoutes = require("./routes/deliveryPersonRoutes");
 const PORT = process.env.PORT || 3000;
 
@@ -21,11 +18,8 @@ app.use(cors({ origin: "*", credentials: true }));
 app.use(cookieParser());
 
 app.use("/api", loginRoutes);
-app.use("/api", patientRoutes);
 app.use("/api", pantryRoutes);
-app.use("/api", mealRoutes);
-app.use("/api", taskRoutes);
-app.use("/api", deliveryRoutes);
+app.use("/api", managerRoutes);
 app.use("/api", deliveryPersonRoutes);
 
 app.get("/", (req, res) => {
