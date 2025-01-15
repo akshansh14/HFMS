@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 // Initialize context with default values
 const AppContext = createContext(null);
 
-const BASE_URL = "http://localhost:7000"; // Update with your API base URL
+const BASE_URL = "https://hfms-3w5u.onrender.com"; // Update with your API base URL
 
 export function AppContextProvider({ children }) {
 	const navigate = useNavigate();
