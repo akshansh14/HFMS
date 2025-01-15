@@ -10,27 +10,16 @@
       {
         "src": "/api/(.*)",
         "dest": "/api/$1"
-      },
-      {
-        "src": "/(.*)",
-        "dest": "/index.html"
       }
     ],
     "env": {
-      "DATABASE_URL": "@database_url",
-      "API_KEY": "@api_key"
+      "DATABASE_URL": "@database_url"
     },
+    "regions": ["iad1"],
     "rewrites": [
       {
-        "source": "/old-route",
-        "destination": "/new-route"
-      }
-    ],
-    "redirects": [
-      {
-        "source": "/deprecated",
-        "destination": "/new",
-        "statusCode": 301
+        "source": "/(.*)",
+        "destination": "/api/$1"
       }
     ]
   }
