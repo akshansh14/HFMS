@@ -7,7 +7,7 @@ const {updateDeliveryStatus,getDeliveryPersonwithDeliveries}=require('../control
 router.get('/deliveryperson/:deliveryPersonId', getDeliveryPersonwithDeliveries);
 
 //update delivery status 
-router.get('/deliveryperson/:deliveryPId', updateDeliveryStatus);
+router.put('/deliveryperson/:deliveryId', updateDeliveryStatus);
 
 
 

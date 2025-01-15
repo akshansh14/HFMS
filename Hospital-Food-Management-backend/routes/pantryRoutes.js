@@ -17,9 +17,6 @@ router.get("/staff/:staffId", getPantryStaffWithTasks);
 //create deliveryperson
 router.post('/deliveryperson', createPerson);
 
-//gets tasks
-router.get('/tasks/:staffId', getPantryStaffWithTasks);
-
 //asign delivery 
 router.post('/delivery/:deliveryPersonId', createDelivery);
 

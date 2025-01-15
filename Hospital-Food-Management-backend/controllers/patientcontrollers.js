@@ -86,55 +86,66 @@ exports.deletePatient=async(req,res)=>{
 }
 
 exports.updatePatient = async (req, res) => {
-    try {
-        const { id } = req.params; // Get patient ID from the URL parameters
-        const { name, roomNumber, contactInfo, address, age, gender, bedNumber, floorNumber, diseases, allergies, emergencyContact } = req.body;
+	try {
+		const { id } = req.params; // Get patient ID from the URL parameters
+		const {
+			name,
+			roomNumber,
+			contactInfo,
+			address,
+			age,
+			gender,
+			bedNumber,
+			floorNumber,
+			diseases,
+			allergies,
+			emergencyContact,
+		} = req.body;
 
-        // Check if the patient exists
-        const patient = await prisma.patient.findUnique({
-            where: {
-                id: id,
-            },
-        });
+		// Check if the patient exists
+		const patient = await prisma.patient.findUnique({
+			where: {
+				id: id,
+			},
+		});
 
-        if (!patient) {
-            return res.status(404).json({
-                message: "Patient not found",
-            });
-        }
+		if (!patient) {
+			return res.status(404).json({
+				message: "Patient not found",
+			});
+		}
 
-        const updateData = {};
+		const updateData = {};
 
-        if (name) updateData.name = name;
-        if (roomNumber) updateData.roomNumber = roomNumber;
-        if (contactInfo) updateData.contactInfo = contactInfo;
-        if (address) updateData.address = address;
-        if (age) updateData.age = age;
-        if (gender) updateData.gender = gender;
-        if (bedNumber) updateData.bedNumber = bedNumber;
-        if (floorNumber) updateData.floorNumber = floorNumber;
-        if (emergencyContact) updateData.emergencyContact = emergencyContact;
+		// Update patient fields if they exist in the request body
+		if (name) updateData.name = name;
+		if (roomNumber) updateData.roomNumber = roomNumber;
+		if (contactInfo) updateData.contactInfo = contactInfo;
+		if (address) updateData.address = address;
+		if (age) updateData.age = age;
+		if (gender) updateData.gender = gender;
+		if (bedNumber) updateData.bedNumber = bedNumber;
+		if (floorNumber) updateData.floorNumber = floorNumber;
+		if (emergencyContact) updateData.emergencyContact = emergencyContact;
 
-        const currentPatient = await prisma.patient.findUnique({
-            where: { id: id },
-        });
-        if (diseases) updateData.diseases = currentPatient.diseases.concat(diseases || []);
-        if (allergies) updateData.allergies = currentPatient.allergies.concat(allergies || []);
-        
-        const updatedPatient = await prisma.patient.update({
-            where: {
-                id: id,
-            },
-            data: updateData,
-        });
+		// For diseases and allergies, update only if they are provided in the request body
+		if (diseases !== undefined) updateData.diseases = diseases; // Directly save the new diseases array
+		if (allergies !== undefined) updateData.allergies = allergies; // Directly save the new allergies array
 
-        res.status(200).json({
-            message: "Patient updated successfully",
-            patient: updatedPatient,
-        });
-    } catch (error) {
-        res.status(500).json({
-            message: `Error updating patient: ${error.message}`,
-        });
-    }
+		const updatedPatient = await prisma.patient.update({
+			where: {
+				id: id,
+			},
+			data: updateData,
+		});
+
+		res.status(200).json({
+			message: "Patient updated successfully",
+			patient: updatedPatient,
+		});
+	} catch (error) {
+		res.status(500).json({
+			message: Error `updating patient: ${error.message}`,
+		});
+	}
 };

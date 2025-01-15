@@ -14,7 +14,7 @@ router.get('/meals', getMeals);
 router.get('/tasks', getAllTask);
 router.get("/get-staff", getstaff);
 router.post('/get-deliveryperson', getAllDeliveryPerson);
-router.get('/delivery/:deliveryPersonId', getAllDeliveries);
+router.get('/get-delivery/', getAllDeliveries);
 
 
 

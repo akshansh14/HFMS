@@ -3,7 +3,7 @@ const prisma = require("../prisma/server");
 // Create new staff member
 exports.createStaff = async (req, res) => {
   try {
-    const staffData = req.body; // name, contactInfo, location, shift, 
+    const staffData = req.body; // name, contactInfo, location,  
     const oldstaff =await prisma.pantryStaff.findFirst({
 		where: {
 			email: staffData.email,
@@ -26,16 +26,22 @@ exports.getPantryStaffWithTasks = async (req, res) => {
   const { staffId } = req.params;
 
   try {
-    const pantryStaff = await prisma.pantryStaff.findUnique({
-		where: { id: staffId }, 
+	const pantryStaff = await prisma.pantryStaff.findUnique({
+		where: {
+		  id: staffId,
+		},
 		include: {
 		  tasks: {
 			include: {
-			  meal: true, 
+			  meal: {
+				include: {
+				  patient: true, // Ensure 'patient' is a valid relation in the schema
+				},
+			  },
 			},
 		  },
 		},
-	  });
+	  })
 
     if (!pantryStaff) {
       return res.status(404).json({ message: "Pantry staff not found" });
@@ -74,50 +80,64 @@ exports.getstaff = async (req, res) => {
 	}
 };
 
-exports.updateTaskStatus=async(req,res)=>{
+exports.updateTaskStatus = async (req, res) => {
 	try {
-	  const {taskId}= req.params;
-	  const {status,mealId}=req.body;
-	  const updatedTask={}
-	  if(status=== "COMPLETED"){
-		updatedTask =await prisma.task.update({
-			where:{
-			  id:taskId,
-			},
-			data:{
-			  status,
-			  completedTime: new Date.now(),
-			}
-		})
-	  }else{
-		updatedTask =await prisma.task.update({
-			where:{
-			  id:taskId,
-			},
-			data:{
-			  status,
-			}
-		})
-	  }
-	  if(!updatedTask){
-		return res.status(404).json({message:'Delivery not found'});
-		}
-	  const meal =await prisma.meal.update({
-		  where:{
-			id:mealId,
+	  const { taskId } = req.params;
+	  const { status, mealId, updatedAt } = req.body;
+  
+	  // Initialize variables to store the results
+	  let updatedTask;
+	  let updatedMeal;
+  
+	  if (status === "COMPLETED") {
+		// Update the task with the new status and completion time
+		updatedTask = await prisma.task.update({
+		  where: {
+			id: taskId,
 		  },
-		  data:{
+		  data: {
 			status,
-		  }
-	  })
-	  if(!meal){
-		return res.status(404).json({message:'Meal not found'});
-		}
-		res.status(200).json({
-			message: "Task status updated successfully",
+			completedTime: new Date(updatedAt), // Ensure `updatedAt` is a valid date string
+		  },
 		});
+  
+		// Update the meal status to READY
+		updatedMeal = await prisma.meal.update({
+		  where: {
+			id: mealId,
+		  },
+		  data: {
+			status: "READY",
+		  },
+		});
+	  } else {
+		// Update the task with the new status only
+		updatedTask = await prisma.task.update({
+		  where: {
+			id: taskId,
+		  },
+		  data: {
+			status,
+		  },
+		});
+	  }
+  
+	  // Check if the updates were successful
+	  if (!updatedTask) {
+		return res.status(404).json({ message: "Task not found" });
+	  }
+  
+	  if (status === "COMPLETED" && !updatedMeal) {
+		return res.status(404).json({ message: "Meal not found" });
+	  }
+  
+	  // Respond with success message
+	  res.status(200).json({
+		message: "Task status updated successfully",
+	  });
 	} catch (error) {
-	  console.error('Error updating delivery status:', error);
-	  res.status(500).json({ message: 'Internal server error', error: error.message });
+	  console.error("Error updating task status:", error);
+	  res.status(500).json({ message: "Internal server error", error: error.message });
 	}
-  }
+  };
+  

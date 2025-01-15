@@ -1,8 +1,9 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react/prop-types */
-import { createContext, useState, useEffect } from "react";
+import { createContext, useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { jwtDecode } from "jwt-decode"; // Corrected import statement
+import { useNavigate } from "react-router-dom";
 
 // Initialize context with default values
 const AppContext = createContext(null);
@@ -10,38 +11,35 @@ const AppContext = createContext(null);
 const BASE_URL = "http://localhost:7000"; // Update with your API base URL
 
 export function AppContextProvider({ children }) {
-	const [account, setAccount] = useState({});
-	const [token, setToken] = useState(() => {
-		return localStorage.getItem("token") || null;
-	});
+	const navigate = useNavigate();
 
+	// Initialize state from localStorage
+	const [token, setToken] = useState(() => localStorage.getItem("token"));
+	const [role, setRole] = useState(() => localStorage.getItem("role"));
+
+	// Handle token and role changes
 	useEffect(() => {
-		if (token) {
-			axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-			localStorage.setItem("token", token);
-
-			// Decode the token and set the account when token changes
-			try {
-				const decodedToken = jwtDecode(token);
-				setAccount(decodedToken);
-			} catch (error) {
-				console.error("Invalid token, unable to decode:", error);
-				setAccount(null);
-			}
-		} else {
-			delete axios.defaults.headers.common["Authorization"];
-			localStorage.removeItem("token");
-			setAccount(null);
+		if (!token) {
+			navigate("/login"); // Redirect to login if no token
+			return;
 		}
-	}, [token]);
 
-	// Configure axios instance
+		// Validate role
+		if (!["ADMIN", "INFANTRY", "DELIVERY"].includes(role)) {
+			toast.error("Unauthorized access");
+			navigate("/login");
+		}
+
+		// Set Authorization header
+		axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+	}, [token, role]);
+
+	// Axios instance with base configuration
 	const axiosInstance = axios.create({
 		baseURL: BASE_URL,
 		timeout: 5000,
 		headers: {
 			"Content-Type": "application/json",
-			Authorization: `Bearer ${token}`,
 		},
 	});
 
@@ -51,8 +49,8 @@ export function AppContextProvider({ children }) {
 		(error) => {
 			if (error.response?.status === 401) {
 				// Handle unauthorized access
-				setToken(null);
-				setAccount(null);
+				toast.error("Session expired. Please log in again.");
+				api.logout();
 			}
 			return Promise.reject(error);
 		}
@@ -63,18 +61,20 @@ export function AppContextProvider({ children }) {
 		login: async (data) => {
 			try {
 				const result = await axiosInstance.post("/api/login", data);
+				const userToken = result.data?.user?.token;
+				const userRole = result.data?.user?.role;
 
-				// Retrieve token from response
-				const userToken = result.data?.user.token;
+				if (!userToken || !userRole) {
+					throw new Error("Token or role not found in the response");
+				}
 
-				// Set token and decode account immediately
+				// Save token and role in localStorage and state
+				localStorage.setItem("token", userToken);
+				localStorage.setItem("role", userRole);
 				setToken(userToken);
-
-				const decodedToken = jwtDecode(userToken);
-				setAccount(decodedToken);
+				setRole(userRole);
 
 				toast.success("Successfully logged in!");
-				return result;
 			} catch (error) {
 				toast.error(
 					error.response?.data?.message ||
@@ -95,9 +95,22 @@ export function AppContextProvider({ children }) {
 			}
 		},
 
-		createMeal: async (data) => {
+		updatePatient: async (id, data) => {
 			try {
-				const response = await axiosInstance.post("/api/meals/:patientId", data);
+				await axiosInstance.put(`/api/update-patient/${id}`, data);
+			} catch (error) {
+				throw new Error(
+					error.response?.data?.message || "Failed to update patients"
+				);
+			}
+		},
+
+		createMeal: async (data, patientId) => {
+			try {
+				const response = await axiosInstance.post(
+					`/api/meals/${patientId}`,
+					data
+				);
 				return response.data;
 			} catch (error) {
 				throw new Error(
@@ -113,6 +126,43 @@ export function AppContextProvider({ children }) {
 			} catch (error) {
 				throw new Error(
 					error.response?.data?.message || "Failed to fetch staff"
+				);
+			}
+		},
+
+		createStaff: async (data) => {
+			try {
+				await axiosInstance.post(`/api/staff`, data);
+			} catch (error) {
+				throw new Error(
+					error.response?.data?.message ||
+						"Failed to create new staff"
+				);
+			}
+		},
+
+		getPantryStaff: async (staffId) => {
+			try {
+				const response = await axiosInstance.get(
+					`/api/staff/${staffId}`
+				);
+				return response.data;
+			} catch (error) {
+				throw new Error(
+					error.response?.data?.message || "Failed to fetch staff"
+				);
+			}
+		},
+
+		updateTasks: async (taskId, data) => {
+			try {
+				await axiosInstance.put(
+					`/api/staff/task-update/${taskId}`,
+					data
+				);
+			} catch (error) {
+				throw new Error(
+					error.response?.data?.message || "Failed to update patients"
 				);
 			}
 		},
@@ -143,9 +193,24 @@ export function AppContextProvider({ children }) {
 			}
 		},
 
+		getDeliveryPerson: async () => {
+			try {
+				const response = await axiosInstance.get(
+					"/api/get-deliveryperson"
+				);
+
+				return response.data;
+			} catch (error) {
+				throw new Error(
+					error.response?.data?.message ||
+						"Failed to fetch delivery personnel details"
+				);
+			}
+		},
+
 		getDeliveryDetails: async () => {
 			try {
-				const response = await axiosInstance.get("/api/deliveryperson");
+				const response = await axiosInstance.get("/api/get-delivery");
 				return response.data;
 			} catch (error) {
 				throw new Error(
@@ -155,11 +220,11 @@ export function AppContextProvider({ children }) {
 			}
 		},
 
-		assignDelivery: async (data) => {
+		assignDelivery: async (deliveryPersonId, mealId, notes) => {
 			try {
 				const response = await axiosInstance.post(
-					"/api/deliveries/assign",
-					data
+					`/api/delivery/${deliveryPersonId}`,
+					{ mealId, notes }
 				);
 				return response.data;
 			} catch (error) {
@@ -169,15 +234,51 @@ export function AppContextProvider({ children }) {
 			}
 		},
 
+		getAssignedDeliveries: async (deliveryPersonId) => {
+			try {
+				const response = await axiosInstance.get(
+					`/api/deliveryperson/${deliveryPersonId}`
+				);
+				return response.data;
+			} catch (error) {
+				throw new Error(
+					error.response?.data?.message ||
+						"Failed to get delivery details"
+				);
+			}
+		},
+
+		updateDeliveryStatus: async (deliveryId, status, mealId) => {
+			try {
+				const response = await axiosInstance.put(
+					`/api/deliveryperson/${deliveryId}`,
+					{
+						status,
+						mealId,
+					}
+				);
+				return response.data;
+			} catch (error) {
+				throw new Error(
+					error.response?.data?.message || "Failed to update status"
+				);
+			}
+		},
+
 		logout: () => {
+			// Clear state and localStorage
 			setToken(null);
-			setAccount(null);
+			setRole(null);
+			localStorage.removeItem("token");
+			localStorage.removeItem("role");
+			axios.defaults.headers.common["Authorization"] = null;
+			navigate("/login"); // Redirect to login
 		},
 	};
 
 	const contextValue = {
-		account,
-		setAccount,
+		role,
+		setRole,
 		token,
 		setToken,
 		api,

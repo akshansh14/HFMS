@@ -54,7 +54,7 @@ model PantryStaff {
   role          Role @default(INFANTRY)
   password      String
   location      String
-  shift         Shift
+  shift         Shift @default(AFTERNOON)
   tasks         Task[]
 }
 model Meal {
@@ -120,7 +120,6 @@ enum MealTime {
 }
 
 enum TaskStatus {
-  PENDING
   IN_PROGRESS
   COMPLETED
   DELAYED

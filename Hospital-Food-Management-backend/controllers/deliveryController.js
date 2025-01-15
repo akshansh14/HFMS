@@ -37,7 +37,7 @@ exports.createDelivery = async (req, res) => {
         include: { activeDeliveries: true }, // Include related tasks, if applicable
       });
       
-      return res.status(201).json({
+      return res.status(200).json({
         message: "Delivery created successfully",
         delivery,
         updatedDeliveryPerson,

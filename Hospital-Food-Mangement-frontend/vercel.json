@@ -1,0 +1,37 @@
+{
+    "version": 2,
+    "builds": [
+      {
+        "src": "package.json",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/api/(.*)",
+        "dest": "/api/$1"
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/index.html"
+      }
+    ],
+    "env": {
+      "DATABASE_URL": "@database_url",
+      "API_KEY": "@api_key"
+    },
+    "rewrites": [
+      {
+        "source": "/old-route",
+        "destination": "/new-route"
+      }
+    ],
+    "redirects": [
+      {
+        "source": "/deprecated",
+        "destination": "/new",
+        "statusCode": 301
+      }
+    ]
+  }
+  

@@ -53,65 +53,90 @@ const prisma=require('../prisma/server')
           res.status(500).json({ message: 'Internal server error', error: error.message });
         }
       };
-
-      exports.getAllDeliveryPerson=async(req,res)=>{
+      exports.getAllDeliveryPerson = async (req, res) => {
         try {
           const deliveryPersons = await prisma.deliveryPerson.findMany();
-          if(!deliveryPersons){
-            return res.status(404).json({message:'No delivery persons found'});
+      
+          if (!deliveryPersons || deliveryPersons.length === 0) {
+            return res
+              .status(404)
+              .json({ message: "No delivery persons found" });
           }
-          const deliveryPerson = deliveryPersons.map((staff) => {
-            return { ...deliveryPerson, password: undefined, role: undefined };
+      
+          const sanitizedDeliveryPersons = deliveryPersons.map((person) => {
+            const { password, role, ...sanitizedPerson } = person; // Exclude sensitive fields
+            return sanitizedPerson;
           });
-          res.status(200).json(deliveryPersons);
+      
+          res.status(200).json(sanitizedDeliveryPersons);
         } catch (error) {
-          console.error('Error fetching delivery persons:', error);
-          res.status(500).json({ message: 'Internal server error', error: error.message });
+          console.error("Error fetching delivery persons:", error);
+          res.status(500).json({
+            message: "Internal server error",
+            error: error.message,
+          });
         }
-      }
+      };
 
-      exports.updateDeliveryStatus=async(req,res)=>{
+      exports.updateDeliveryStatus = async (req, res) => {
         try {
-          const {deliveryId}= req.params;
-          const {status,mealId}=req.body;
-          const updatedDelivery ={}
-          if(status==="DELIVERED"){
-             updatedDelivery=await prisma.delivery.update({
-              where:{
-                id:deliveryId,
-              },
-              data:{
-                status,
-                endTime:new Date.now(),
-              }
-            })
-          }else{
-             updatedDelivery=await prisma.delivery.update({
-              where:{
-                id:deliveryId,
-              },
-              data:{
-                status,
-              }
-            })
+          const { deliveryId } = req.params;
+          const { status, mealId } = req.body;
+      
+          if (!deliveryId) {
+            return res.status(400).json({ message: 'Delivery ID is required' });
           }
-          if(!updatedDelivery){
-            return res.status(404).json({message:'Delivery not found'});
-            }
-          const meal =await prisma.meal.update({
-              where:{
-                id:mealId,
-              },
-              data:{
-                status,
-              }
-          })
-          if(!meal){
-            return res.status(404).json({message:'Meal not found'});
+          if (!mealId) {
+            return res.status(400).json({ message: 'Meal ID is required' });
           }
-            res.status(200).json(updatedDelivery);
+      
+          let updatedDelivery;
+      
+          if (status === "DELIVERED") {
+            updatedDelivery = await prisma.delivery.update({
+              where: {
+                id: deliveryId,
+              },
+              data: {
+                status,
+                endTime: new Date(), // Corrected Date assignment
+              },
+            });
+          } else {
+            updatedDelivery = await prisma.delivery.update({
+              where: {
+                id: deliveryId,
+              },
+              data: {
+                status,
+              },
+            });
+          }
+      
+          if (!updatedDelivery) {
+            return res.status(404).json({ message: 'Delivery not found' });
+          }
+      
+          const meal = await prisma.meal.update({
+            where: {
+              id: mealId,
+            },
+            data: {
+              status,
+            },
+          });
+      
+          if (!meal) {
+            return res.status(404).json({ message: 'Meal not found' });
+          }
+      
+          res.status(200).json({
+            message: 'Delivery status updated successfully',
+            updatedDelivery,
+          });
         } catch (error) {
           console.error('Error updating delivery status:', error);
           res.status(500).json({ message: 'Internal server error', error: error.message });
         }
-      }
+      };
+      

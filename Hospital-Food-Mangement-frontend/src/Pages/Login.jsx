@@ -1,9 +1,10 @@
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppContext from "../context/AppContext";
+import toast from "react-hot-toast";
 
 const LoginComponent = () => {
-	const { api, account, setAccount } = useContext(AppContext); // Make sure `setAccount` is provided to update account state
+	const { api } = useContext(AppContext); // Make sure `setAccount` is provided to update account state
 
 	const navigate = useNavigate();
 
@@ -29,36 +30,51 @@ const LoginComponent = () => {
 		setError(null); // Reset error state
 
 		const data = {
-			email: formData.email,
+			email: formData.email?.trim(), // Ensure no leading/trailing spaces
 			password: formData.password,
 		};
 
-		try {
-			// Assuming api.login is an async function that logs in the user and returns account details
-			const response = await api.login(data);
-			setAccount(response.account); // Update the account state with the response
+		// Input validation
+		if (!data.email || !data.password) {
+			setError("Both email and password are required.");
+			setIsLoading(false);
+			return;
+		}
 
-			switch (account.role) {
-				case "ADMIN": {
+		try {
+			// Attempt to log in using the API
+			await api.login(data);
+
+			// Retrieve role from localStorage
+			const role = localStorage.getItem("role");
+
+			// Ensure a valid role is present
+			if (!["ADMIN", "INFANTRY", "DELIVERY"].includes(role)) {
+				throw new Error("Invalid role detected. Redirecting to login.");
+			}
+
+			// Navigate based on role
+			switch (role) {
+				case "ADMIN":
 					navigate("/MD");
 					break;
-				}
-				case "INFANTRY": {
+				case "INFANTRY":
 					navigate("/ID");
 					break;
-				}
-				case "DELIVERY": {
+				case "DELIVERY":
 					navigate("/DD");
 					break;
-				}
 				default:
-					setError("Unauthorized role");
-					break;
+					// Unexpected case fallback
+					throw new Error(
+						"Unhandled role detected. Redirecting to login."
+					);
 			}
 		} catch (error) {
-			console.error(error);
-			setError("Login failed. Please try again.");
+			// Log the error for debugging
+			toast.error(error);
 		} finally {
+			// Always reset loading state
 			setIsLoading(false);
 		}
 	};

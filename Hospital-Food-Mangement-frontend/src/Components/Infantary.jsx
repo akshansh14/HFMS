@@ -1,242 +1,359 @@
 import { useContext, useState, useEffect } from "react";
-import {
-	Button,
-	Select,
-	MenuItem,
-	Typography,
-	Paper,
-	Box,
-	CardHeader,
-	Avatar,
-	Card,
-	CardContent,
-} from "@mui/material";
 import AppContext from "../context/AppContext";
+import { PlusIcon, Users } from "lucide-react";
+import { AddStaffModal } from "./AddStaffModal";
+import toast from "react-hot-toast";
 
 const InfantryTasks = () => {
 	const [meals, setMeals] = useState([]);
 	const [patients, setPatients] = useState([]);
-	const [staffMembers, setStaffMembers] = useState([]); // To hold available staff
-	const [selectedStaff, setSelectedStaff] = useState({}); // Holds selected staff for each meal
+	const [staffMembers, setStaffMembers] = useState([]);
+	const [selectedStaff, setSelectedStaff] = useState({});
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [newStaff, setNewStaff] = useState({
+		name: "",
+		contactInfo: "",
+		email: "",
+		location: "",
+		password: "",
+		shift: "MORNING",
+	});
+
 	const { api } = useContext(AppContext);
 
-	// Fetch Meals, Patients, and Staff Members on Component Mount
+	const fetchData = async () => {
+		try {
+			const { data: mealsData } = await api.getPendingMeals();
+			setMeals(mealsData.meals || []);
+			setPatients(mealsData.patient || []);
+
+			const staffData = await api.getStaff();
+			setStaffMembers(staffData || []);
+		} catch (error) {
+			console.error("Error fetching data:", error);
+		}
+	};
 	useEffect(() => {
-		const fetchData = async () => {
-			try {
-				// Fetching meals and patients
-				const { data: mealsData } = await api.getPendingMeals();
-				setMeals(mealsData.meals);
-				setPatients(mealsData.patient);
-
-				// Fetching available staff
-				const staffData = await api.getStaff();
-				setStaffMembers(staffData);
-			} catch (error) {
-				console.error("Error fetching data:", error);
-			}
-		};
-
 		fetchData();
-	}, [api]);
+
+		const intervalId = setInterval(() => {
+			fetchData();
+			toast.success("Meals list updated");
+		}, 300000);
+
+		return () => clearInterval(intervalId);
+	}, []);
 
 	const handleAssignTask = async (mealId) => {
 		const staffId = selectedStaff[mealId];
 
 		if (!staffId) {
-			alert("Please select a staff member for this meal.");
+			toast.error("Please select a staff member for this meal.");
 			return;
 		}
 
-		console.log(staffId, mealId);
-
 		try {
-			await api.assignTask(staffId, mealId); // Assign task to specific meal and staff
-			alert("Task assigned successfully!");
+			await api.assignTask(staffId, mealId);
+			toast.success("Task assigned successfully!");
+
+			const { data: mealsData } = await api.getPendingMeals();
+			setMeals(mealsData.meals || []);
+			setPatients(mealsData.patient || []);
 		} catch (error) {
 			console.error("Error assigning task:", error);
-			alert("Failed to assign task.");
+			toast.error("Failed to assign task. Please try again.");
 		}
 	};
 
-	// Get the patient data associated with a meal
 	const getPatientDetails = (patientId) => {
 		return patients.find((patient) => patient.id === patientId);
 	};
 
+	const handleAddStaff = () => {
+		setIsModalOpen(true);
+	};
+
+	const handleSaveStaff = async () => {
+		try {
+			await api.createStaff(newStaff);
+			const staffData = await api.getStaff();
+			setStaffMembers(staffData || []);
+		} catch (error) {
+			console.log(error);
+			toast.error("Failed to create staff");
+		}
+		setNewStaff({
+			name: "",
+			contactInfo: "",
+			email: "",
+			location: "",
+			password: "",
+			shift: "MORNING",
+		});
+		setIsModalOpen(false);
+	};
+
 	return (
-		<Box
-			component={Paper}
-			elevation={5}
-			sx={{
-				padding: "30px",
-				borderRadius: "20px",
-				maxWidth: "600px",
-				margin: "20px auto",
-				backgroundColor: "#ffffff",
-				boxShadow: "0px 4px 30px rgba(0, 0, 0, 0.1)",
-			}}
-		>
-			<Card sx={{ borderRadius: "12px", overflow: "hidden" }}>
-				<CardHeader
-					avatar={
-						<Avatar sx={{ bgcolor: "#1976d2" }}>
-							<i className="fas fa-utensils"></i>
-						</Avatar>
-					}
-					title={<Typography variant="h5">Infantry Tasks</Typography>}
-					subheader={
-						<Typography variant="body1">
-							Assign pending meals to a staff member
-						</Typography>
-					}
-					sx={{
-						backgroundColor: "#1976d2",
-						color: "#fff",
-						borderRadius: "12px 12px 0 0",
-					}}
+		<div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+			{/* Add Staff Modal */}
+			{isModalOpen && (
+				<AddStaffModal
+					setIsModalOpen={setIsModalOpen}
+					setNewStaff={setNewStaff}
+					newStaff={newStaff}
+					handleSaveStaff={handleSaveStaff}
 				/>
+			)}
 
-				<CardContent sx={{ padding: "20px" }}>
-					<Typography variant="h6" gutterBottom>
-						All Meals
-					</Typography>
+			<div className="bg-white rounded-lg shadow-lg">
+				{/* Header */}
+				<div className="bg-blue-600 p-4 rounded-t-lg flex justify-between items-center flex-col sm:flex-row">
+					<div className="flex items-center gap-4">
+						<div className="flex-shrink-0">
+							<Users className="w-8 h-8 text-white" />
+						</div>
+						<div>
+							<h1 className="text-xl sm:text-2xl font-semibold text-white">
+								Infantry Tasks
+							</h1>
+							<p className="text-blue-100">
+								Assign pending meals to a staff member
+							</p>
+						</div>
+					</div>
+					<button
+						onClick={handleAddStaff}
+						className="text-blue-600 bg-white md:text-xl font-semibold rounded-lg px-3 py-2 flex items-center gap-2 mt-4 sm:mt-0"
+					>
+						<PlusIcon />
+						Add Staff
+					</button>
+				</div>
 
-					{meals.length > 0 ? (
-						<ul>
-							{meals.map((meal) => {
-								const patient = getPatientDetails(
-									meal.patientId
-								); // Get patient data for this meal
+				{/* Rest of the component remains the same */}
+				<div className="p-6">
+					<h2 className="text-lg font-semibold text-gray-900 mb-4">
+						Pending Meals
+					</h2>
 
-								return (
-									<Card
-										key={meal.id}
-										sx={{
-											marginBottom: "16px",
-											borderRadius: "8px",
-											boxShadow:
-												"0 4px 10px rgba(0, 0, 0, 0.1)",
-											backgroundColor: "#f5f5f5",
-											"&:hover": {
-												boxShadow:
-													"0 8px 15px rgba(0, 0, 0, 0.1)",
-											},
-										}}
-									>
-										<CardContent>
-											<Typography
-												variant="body2"
-												fontWeight="bold"
-											>
-												Meal Time: {meal.mealTime}
-											</Typography>
-											<Typography variant="body2">
-												Ingredients:{" "}
-												{meal.Ingredients.join(", ")}
-											</Typography>
-											<Typography variant="body2">
-												Instructions:{" "}
-												{meal.Instructions}
-											</Typography>
+					{meals.filter((meal) => meal.status === "PENDING").length >
+					0 ? (
+						<div className="space-y-6">
+							{meals
+								.filter((meal) => meal.status === "PENDING")
+								.map((meal) => {
+									const patient = getPatientDetails(
+										meal.patientId
+									);
 
-											{/* Staff Assignment Dropdown */}
-											<Select
-												value={
-													selectedStaff[meal.id] || ""
-												}
-												onChange={(e) =>
-													setSelectedStaff({
-														...selectedStaff,
-														[meal.id]:
-															e.target.value,
-													})
-												}
-												displayEmpty
-												fullWidth
-												sx={{
-													marginBottom: "16px",
-												}}
-											>
-												<MenuItem value="" disabled>
-													Select a Staff Member
-												</MenuItem>
-												{staffMembers.map((staff) => (
-													<MenuItem
-														key={staff.id}
-														value={staff.id}
+									return (
+										<div
+											key={meal.id}
+											className="bg-gray-50 rounded-lg p-6 shadow-sm hover:shadow-md transition-all duration-200"
+										>
+											{/* Meal Information */}
+											<div className="mb-4 space-y-2">
+												<h3 className="font-semibold text-gray-900">
+													Meal Time: {meal.mealTime}
+												</h3>
+												<p className="text-gray-700">
+													<span className="font-medium">
+														Ingredients:
+													</span>{" "}
+													{meal.Ingredients
+														? meal.Ingredients.join(
+																", "
+														  )
+														: "N/A"}
+												</p>
+												<p className="text-gray-700">
+													<span className="font-medium">
+														Instructions:
+													</span>{" "}
+													{meal.Instructions || "N/A"}
+												</p>
+											</div>
+
+											{/* Staff Assignment */}
+											<div className="relative mb-6">
+												<select
+													value={
+														selectedStaff[
+															meal.id
+														] || ""
+													}
+													onChange={(e) =>
+														setSelectedStaff({
+															...selectedStaff,
+															[meal.id]:
+																e.target.value,
+														})
+													}
+													className="w-full p-3 pl-12 border rounded-lg bg-white text-gray-700 appearance-none cursor-pointer
+                        focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                        hover:border-blue-400 transition-all duration-200"
+												>
+													<option
+														value=""
+														disabled
+														className="text-gray-500"
 													>
-														{staff.name}
-													</MenuItem>
-												))}
-											</Select>
+														Select a Staff
+													</option>
+													{staffMembers.map(
+														(staff) => (
+															<option
+																key={staff.id}
+																value={staff.id}
+																className="py-2"
+															>
+																{`${staff.name} - ${staff.shift} (${staff.location})`}
+															</option>
+														)
+													)}
+												</select>
 
-											<Button
+												<div className="absolute left-3 top-1/2 -translate-y-1/2">
+													<Users className="w-5 h-5 text-gray-400" />
+												</div>
+
+												<div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+													<svg
+														className="w-5 h-5 text-gray-400"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															strokeLinecap="round"
+															strokeLinejoin="round"
+															strokeWidth="2"
+															d="M19 9l-7 7-7-7"
+														/>
+													</svg>
+												</div>
+											</div>
+
+											{/* Staff Details Popup */}
+											{selectedStaff[meal.id] && (
+												<div className="my-2 w-full bg-white border rounded-lg shadow-md p-4">
+													{staffMembers.map(
+														(staff) => {
+															if (
+																staff.id ===
+																selectedStaff[
+																	meal.id
+																]
+															) {
+																return (
+																	<div
+																		key={
+																			staff.id
+																		}
+																		className="space-y-3"
+																	>
+																		<div className="font-medium text-gray-900">
+																			{
+																				staff.name
+																			}
+																		</div>
+																		<div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+																			<div>
+																				<span className="font-medium">
+																					Email:
+																				</span>{" "}
+																				{
+																					staff.email
+																				}
+																			</div>
+																			<div>
+																				<span className="font-medium">
+																					Contact:
+																				</span>{" "}
+																				{
+																					staff.contactInfo
+																				}
+																			</div>
+																			<div>
+																				<span className="font-medium">
+																					Location:
+																				</span>{" "}
+																				{
+																					staff.location
+																				}
+																			</div>
+																			<div>
+																				<span className="font-medium">
+																					Shift:
+																				</span>{" "}
+																				<span
+																					className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                                    ${
+										staff.shift === "MORNING"
+											? "bg-yellow-100 text-yellow-800"
+											: staff.shift === "AFTERNOON"
+											? "bg-blue-100 text-blue-800"
+											: "bg-indigo-100 text-indigo-800"
+									}`}
+																				>
+																					{
+																						staff.shift
+																					}
+																				</span>
+																			</div>
+																		</div>
+																	</div>
+																);
+															}
+															return null;
+														}
+													)}
+												</div>
+											)}
+
+											{/* Assign Task Button */}
+											<button
 												onClick={() =>
 													handleAssignTask(meal.id)
 												}
-												variant="contained"
-												color="primary"
-												fullWidth
-												sx={{
-													marginBottom: "16px",
-													padding: "10px 0",
-												}}
+												className="w-full bg-blue-600 mt-2 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
 											>
 												Assign Task
-											</Button>
+											</button>
 
 											{/* Patient Information */}
 											{patient && (
-												<Box sx={{ marginTop: "10px" }}>
-													<Typography
-														variant="body2"
-														fontWeight="bold"
-													>
+												<div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+													<h4 className="font-semibold text-gray-900">
 														Patient Details
-													</Typography>
-													<Typography variant="body2">
-														Patient Name:{" "}
-														{patient.name}
-													</Typography>
-													<Typography variant="body2">
-														Age: {patient.age}
-													</Typography>
-													<Typography variant="body2">
-														Gender: {patient.gender}
-													</Typography>
-													<Typography variant="body2">
+													</h4>
+													<p className="text-gray-700">
+														Name:{" "}
+														{patient.name || "N/A"}
+													</p>
+													<p className="text-gray-700">
+														Age:{" "}
+														{patient.age || "N/A"}
+													</p>
+													<p className="text-gray-700">
 														Room:{" "}
-														{patient.roomNumber} -
-														Bed: {patient.bedNumber}
-													</Typography>
-													<Typography variant="body2">
-														Diseases:{" "}
-														{patient.diseases.join(
-															", "
-														)}
-													</Typography>
-													<Typography variant="body2">
-														Allergies:{" "}
-														{patient.allergies.join(
-															", "
-														)}
-													</Typography>
-												</Box>
+														{patient.roomNumber ||
+															"N/A"}
+													</p>
+												</div>
 											)}
-										</CardContent>
-									</Card>
-								);
-							})}
-						</ul>
+										</div>
+									);
+								})}
+						</div>
 					) : (
-						<Typography variant="body2" color="textSecondary">
-							No meals to display.
-						</Typography>
+						<p className="text-gray-500">
+							No pending meals to assign.
+						</p>
 					)}
-				</CardContent>
-			</Card>
-		</Box>
+				</div>
+			</div>
+		</div>
 	);
 };
 
